@@ -1,0 +1,267 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* ============================================================
+   Reader theming — light / sepia / dark, mapped onto shadcn
+   ============================================================ */
+
+@theme inline {
+  --font-serif: var(--font-newsreader);
+}
+
+:root,
+[data-theme="light"] {
+  --reading-bg: #faf8f3;
+  --reading-elev: #fffdf8;
+  --reading-fg: #2b2926;
+  --reading-soft: #6b6660;
+  --reading-rule: #e7e2d8;
+  --reading-gold: #8a7a5c;
+  --reading-sel: #e9dfc6;
+  --reading-shelf: #e9e2d4;
+}
+
+[data-theme="sepia"] {
+  --reading-bg: #f4ecd8;
+  --reading-elev: #faf3e2;
+  --reading-fg: #4a3f30;
+  --reading-soft: #8a7a5f;
+  --reading-rule: #e3d7bd;
+  --reading-gold: #9c7d4e;
+  --reading-sel: #e6d6ad;
+  --reading-shelf: #e6dabc;
+}
+
+[data-theme="dark"] {
+  --reading-bg: #161513;
+  --reading-elev: #1d1c19;
+  --reading-fg: #d8d2c6;
+  --reading-soft: #908a7e;
+  --reading-rule: #2c2a26;
+  --reading-gold: #b9a984;
+  --reading-sel: #3a3526;
+  --reading-shelf: #201e19;
+}
+
+/* map reader palette onto shadcn semantic tokens so every
+   component (popover, dialog, slider…) follows the theme */
+[data-theme] {
+  --background: var(--reading-bg);
+  --foreground: var(--reading-fg);
+  --card: var(--reading-elev);
+  --card-foreground: var(--reading-fg);
+  --popover: var(--reading-elev);
+  --popover-foreground: var(--reading-fg);
+  --primary: var(--reading-gold);
+  --primary-foreground: var(--reading-bg);
+  --secondary: var(--reading-sel);
+  --secondary-foreground: var(--reading-fg);
+  --muted: var(--reading-sel);
+  --muted-foreground: var(--reading-soft);
+  --accent: var(--reading-sel);
+  --accent-foreground: var(--reading-fg);
+  --border: var(--reading-rule);
+  --input: var(--reading-rule);
+  --ring: var(--reading-gold);
+}
+
+/* reading typography controls (driven by data-* attributes) */
+:root {
+  --reading-font: var(--font-serif);
+}
+[data-font="serif"] {
+  --reading-font: var(--font-serif);
+}
+[data-font="sans"] {
+  --reading-font: var(--font-sans);
+}
+[data-font="mono"] {
+  --reading-font: var(--font-mono);
+}
+
+::selection {
+  background: var(--reading-sel);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ---------- reading prose ---------- */
+
+.reading {
+  font-family: var(--reading-font);
+  font-size: var(--reading-size, 1.28rem);
+  line-height: var(--reading-leading, 1.8);
+  color: var(--reading-fg);
+}
+.reading p {
+  margin: 0 0 1.35em;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+.reading p.center {
+  text-align: center;
+}
+.reading p.hang {
+  margin-left: 1.4em;
+  text-indent: -1.4em;
+}
+[data-align="justify"] .reading p.body {
+  text-align: justify;
+}
+.reading .firstpara::first-letter {
+  float: left;
+  font-size: 3.6em;
+  line-height: 0.78;
+  font-weight: 500;
+  padding: 0.04em 0.09em 0 0;
+  color: var(--reading-gold);
+}
+
+/* ---------- auto-hide chrome when idle ---------- */
+
+.chrome {
+  transition:
+    opacity 0.35s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+body.chrome-hidden .chrome {
+  opacity: 0;
+  pointer-events: none;
+}
