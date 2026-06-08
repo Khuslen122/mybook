@@ -1,17 +1,31 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { del, list, put } from "@vercel/blob";
 import type { BookContent, BookMeta, Para } from "./types";
 import seedNorwegianWood from "@/content/norwegian-wood.json";
 
-// On-disk store. Book content lives as one JSON file per book in `data/books/`;
-// cover images are served statically from `public/covers/`.
-const DATA_DIR = path.join(process.cwd(), "data", "books");
-const COVERS_DIR = path.join(process.cwd(), "public", "covers");
+// Storage backend selection:
+// - On Vercel the filesystem is read-only (except /tmp), so books and covers
+//   are persisted in Vercel Blob. The token is injected automatically when a
+//   Blob store is connected to the project.
+// - Locally (no token) we fall back to plain on-disk files, which keeps dev
+//   working with zero setup.
+const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 
 const SEED: BookContent[] = [seedNorwegianWood as BookContent];
 
+// ---------------------------------------------------------------------------
+// Disk backend (local development)
+// ---------------------------------------------------------------------------
+const DATA_DIR = path.join(process.cwd(), "data", "books");
+const COVERS_DIR = path.join(process.cwd(), "public", "covers");
+
+function diskBookPath(id: string): string {
+  return path.join(DATA_DIR, `${id}.json`);
+}
+
 /** Create the data dir on first use and seed it with the bundled book(s). */
-async function ensureStore(): Promise<void> {
+async function diskEnsureStore(): Promise<void> {
   try {
     await fs.access(DATA_DIR);
     return; // already initialised — never re-seed
@@ -21,15 +35,192 @@ async function ensureStore(): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await Promise.all(
     SEED.map((b) =>
-      fs.writeFile(bookPath(b.id), JSON.stringify(b, null, 2), "utf8"),
+      fs.writeFile(diskBookPath(b.id), JSON.stringify(b, null, 2), "utf8"),
     ),
   );
 }
 
-function bookPath(id: string): string {
-  return path.join(DATA_DIR, `${id}.json`);
+async function diskReadBook(id: string): Promise<BookContent | null> {
+  try {
+    const raw = await fs.readFile(diskBookPath(id), "utf8");
+    return JSON.parse(raw) as BookContent;
+  } catch {
+    return null;
+  }
 }
 
+async function diskReadAll(): Promise<BookContent[]> {
+  const files = (await fs.readdir(DATA_DIR)).filter((f) => f.endsWith(".json"));
+  const books = await Promise.all(
+    files.map((f) => diskReadBook(path.basename(f, ".json"))),
+  );
+  return books.filter((b): b is BookContent => b !== null);
+}
+
+async function diskWriteBook(book: BookContent): Promise<void> {
+  await fs.writeFile(
+    diskBookPath(book.id),
+    JSON.stringify(book, null, 2),
+    "utf8",
+  );
+}
+
+async function diskRemoveBook(id: string): Promise<void> {
+  await fs.rm(diskBookPath(id), { force: true });
+}
+
+async function diskSaveCover(
+  id: string,
+  ext: string,
+  bytes: Buffer,
+): Promise<string> {
+  await diskDeleteCover(id);
+  await fs.mkdir(COVERS_DIR, { recursive: true });
+  await fs.writeFile(path.join(COVERS_DIR, `${id}.${ext}`), bytes);
+  return `/covers/${id}.${ext}`;
+}
+
+async function diskDeleteCover(id: string): Promise<void> {
+  try {
+    const files = await fs.readdir(COVERS_DIR);
+    await Promise.all(
+      files
+        .filter((f) => f.startsWith(`${id}.`))
+        .map((f) => fs.rm(path.join(COVERS_DIR, f), { force: true })),
+    );
+  } catch {
+    // covers dir may not exist yet — nothing to remove
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Blob backend (Vercel)
+// ---------------------------------------------------------------------------
+const BOOK_PREFIX = "books/";
+const COVER_PREFIX = "covers/";
+
+function blobBookKey(id: string): string {
+  return `${BOOK_PREFIX}${id}.json`;
+}
+
+/** Fetch a blob's JSON, busting the CDN cache so edits are reflected at once. */
+async function fetchBlobJson<T>(url: string, version: number): Promise<T | null> {
+  const res = await fetch(`${url}?v=${version}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return (await res.json()) as T;
+}
+
+/** Seed the store with the bundled book(s) the first time it's empty. */
+async function blobEnsureStore(): Promise<void> {
+  const { blobs } = await list({ prefix: BOOK_PREFIX, limit: 1 });
+  if (blobs.length > 0) return; // already has at least one book
+  await Promise.all(SEED.map((b) => blobWriteBook(b)));
+}
+
+async function blobReadBook(id: string): Promise<BookContent | null> {
+  const key = blobBookKey(id);
+  const { blobs } = await list({ prefix: key, limit: 1 });
+  const hit = blobs.find((b) => b.pathname === key);
+  if (!hit) return null;
+  return fetchBlobJson<BookContent>(hit.url, hit.uploadedAt.getTime());
+}
+
+async function blobReadAll(): Promise<BookContent[]> {
+  const { blobs } = await list({ prefix: BOOK_PREFIX });
+  const books = await Promise.all(
+    blobs
+      .filter((b) => b.pathname.endsWith(".json"))
+      .map((b) => fetchBlobJson<BookContent>(b.url, b.uploadedAt.getTime())),
+  );
+  return books.filter((b): b is BookContent => b !== null);
+}
+
+async function blobWriteBook(book: BookContent): Promise<void> {
+  await put(blobBookKey(book.id), JSON.stringify(book, null, 2), {
+    access: "public",
+    contentType: "application/json",
+    allowOverwrite: true,
+    // shortest cache the API allows; reads also bust it with ?v=
+    cacheControlMaxAge: 60,
+  });
+}
+
+async function blobRemoveBook(id: string): Promise<void> {
+  const key = blobBookKey(id);
+  const { blobs } = await list({ prefix: key, limit: 1 });
+  await Promise.all(
+    blobs.filter((b) => b.pathname === key).map((b) => del(b.url)),
+  );
+}
+
+async function blobSaveCover(
+  id: string,
+  ext: string,
+  bytes: Buffer,
+  contentType: string,
+): Promise<string> {
+  await blobDeleteCover(id);
+  const { url } = await put(`${COVER_PREFIX}${id}.${ext}`, bytes, {
+    access: "public",
+    contentType,
+    allowOverwrite: true,
+  });
+  return url;
+}
+
+async function blobDeleteCover(id: string): Promise<void> {
+  const { blobs } = await list({ prefix: `${COVER_PREFIX}${id}.` });
+  await Promise.all(blobs.map((b) => del(b.url)));
+}
+
+// ---------------------------------------------------------------------------
+// Backend-agnostic storage facade
+// ---------------------------------------------------------------------------
+function ensureStore(): Promise<void> {
+  return useBlob ? blobEnsureStore() : diskEnsureStore();
+}
+
+function readBook(id: string): Promise<BookContent | null> {
+  return useBlob ? blobReadBook(id) : diskReadBook(id);
+}
+
+function readAll(): Promise<BookContent[]> {
+  return useBlob ? blobReadAll() : diskReadAll();
+}
+
+function writeBook(book: BookContent): Promise<void> {
+  return useBlob ? blobWriteBook(book) : diskWriteBook(book);
+}
+
+function removeBook(id: string): Promise<void> {
+  return useBlob ? blobRemoveBook(id) : diskRemoveBook(id);
+}
+
+const EXT_BY_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+};
+
+/** Save a cover image for a book, replacing any existing one. Returns its URL. */
+async function saveCover(id: string, file: File): Promise<string> {
+  const ext = EXT_BY_MIME[file.type];
+  if (!ext) throw new Error("Cover must be a JPG, PNG, WEBP, GIF or AVIF image.");
+  const bytes = Buffer.from(await file.arrayBuffer());
+  return useBlob
+    ? blobSaveCover(id, ext, bytes, file.type)
+    : diskSaveCover(id, ext, bytes);
+}
+
+function deleteCover(id: string): Promise<void> {
+  return useBlob ? blobDeleteCover(id) : diskDeleteCover(id);
+}
+
+// ---------------------------------------------------------------------------
+// Domain logic
+// ---------------------------------------------------------------------------
 function countWords(book: BookContent): number {
   return book.paragraphs.reduce(
     (n, p) => n + p.c.split(/\s+/).filter(Boolean).length,
@@ -48,23 +239,10 @@ function toMeta(b: BookContent): BookMeta {
   };
 }
 
-async function readBook(id: string): Promise<BookContent | null> {
-  try {
-    const raw = await fs.readFile(bookPath(id), "utf8");
-    return JSON.parse(raw) as BookContent;
-  } catch {
-    return null;
-  }
-}
-
 export async function getAllBooks(): Promise<BookMeta[]> {
   await ensureStore();
-  const files = (await fs.readdir(DATA_DIR)).filter((f) => f.endsWith(".json"));
-  const books = await Promise.all(
-    files.map((f) => readBook(path.basename(f, ".json"))),
-  );
+  const books = await readAll();
   return books
-    .filter((b): b is BookContent => b !== null)
     .map(toMeta)
     .sort((a, b) => a.title.localeCompare(b.title));
 }
@@ -104,39 +282,6 @@ export function parseParagraphs(text: string): Para[] {
     .map((block) => block.replace(/\s*\n\s*/g, " ").trim())
     .filter(Boolean)
     .map((c) => ({ t: "p" as const, c }));
-}
-
-const EXT_BY_MIME: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-  "image/avif": "avif",
-};
-
-/** Remove any stored cover file(s) for a book. */
-async function deleteCover(id: string): Promise<void> {
-  try {
-    const files = await fs.readdir(COVERS_DIR);
-    await Promise.all(
-      files
-        .filter((f) => f.startsWith(`${id}.`))
-        .map((f) => fs.rm(path.join(COVERS_DIR, f), { force: true })),
-    );
-  } catch {
-    // covers dir may not exist yet — nothing to remove
-  }
-}
-
-/** Save a cover image for a book, replacing any existing one. Returns its URL. */
-async function saveCover(id: string, file: File): Promise<string> {
-  const ext = EXT_BY_MIME[file.type];
-  if (!ext) throw new Error("Cover must be a JPG, PNG, WEBP, GIF or AVIF image.");
-  await deleteCover(id);
-  await fs.mkdir(COVERS_DIR, { recursive: true });
-  const bytes = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(COVERS_DIR, `${id}.${ext}`), bytes);
-  return `/covers/${id}.${ext}`;
 }
 
 /** Derive { year, published } from an ISO date string, if valid. */
@@ -186,7 +331,7 @@ export async function createBook(input: NewBook): Promise<string> {
     ...(published ? { published } : {}),
     paragraphs,
   };
-  await fs.writeFile(bookPath(id), JSON.stringify(book, null, 2), "utf8");
+  await writeBook(book);
   return id;
 }
 
@@ -232,12 +377,12 @@ export async function updateBook(id: string, input: BookEdit): Promise<void> {
     ...(published ? { published } : {}),
     paragraphs,
   };
-  await fs.writeFile(bookPath(id), JSON.stringify(book, null, 2), "utf8");
+  await writeBook(book);
 }
 
 /** Permanently remove a book and its cover. */
 export async function deleteBook(id: string): Promise<void> {
-  await fs.rm(bookPath(id), { force: true });
+  await removeBook(id);
   await deleteCover(id);
 }
 
