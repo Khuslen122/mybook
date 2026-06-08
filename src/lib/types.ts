@@ -1,6 +1,6 @@
 export type Para = {
-  /** paragraph type: normal, centered, or hanging-indent */
-  t: "p" | "center" | "hang";
+  /** block type: heading, normal, centered, or hanging-indent */
+  t: "h" | "p" | "center" | "hang";
   /** text content */
   c: string;
 };

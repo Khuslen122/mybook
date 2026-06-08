@@ -291,6 +291,19 @@ html {
   hyphens: auto;
   -webkit-hyphens: auto;
 }
+.reading h2.chapter {
+  font-family: var(--reading-font);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.05em;
+  line-height: 1.25;
+  margin: 2.8em 0 1.5em;
+  scroll-margin-top: 5rem;
+}
+.reading h2.chapter:first-child {
+  margin-top: 0;
+}
 .reading p.center {
   text-align: center;
 }

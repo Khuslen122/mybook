@@ -302,14 +302,32 @@ async function uniqueId(base: string): Promise<string> {
   return id;
 }
 
-/** Split pasted text into paragraphs, separated by blank lines. */
+/**
+ * Heuristic: a short, standalone, all-caps line (e.g. "YESTERDAY") is treated
+ * as a chapter heading. Pasted plain text has no markup, so this recovers the
+ * headings that PDFs/EPUBs lose when their text is extracted.
+ */
+function isHeading(block: string): boolean {
+  if (block.length > 60) return false; // headings are short
+  if (!/\p{L}/u.test(block)) return false; // must contain a letter
+  // all-caps: uppercasing changes nothing, lowercasing does
+  return block === block.toUpperCase() && block !== block.toLowerCase();
+}
+
+/** Split pasted text into blocks, separated by blank lines. */
 export function parseParagraphs(text: string): Para[] {
   return text
     .replace(/\r\n/g, "\n")
     .split(/\n\s*\n+/)
     .map((block) => block.replace(/\s*\n\s*/g, " ").trim())
     .filter(Boolean)
-    .map((c) => ({ t: "p" as const, c }));
+    .map((c) => {
+      // explicit markdown-style heading: "# Title" (1–3 #)
+      const m = /^#{1,3}\s+(.+)$/.exec(c);
+      if (m) return { t: "h" as const, c: m[1].trim() };
+      if (isHeading(c)) return { t: "h" as const, c };
+      return { t: "p" as const, c };
+    });
 }
 
 /** Derive { year, published } from an ISO date string, if valid. */

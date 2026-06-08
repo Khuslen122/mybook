@@ -38,6 +38,15 @@ function BookContentInner({ book }: { book: Book }) {
       </motion.header>
 
       {book.paragraphs.map((p, i) => {
+        if (p.t === "h") {
+          // each chapter restarts the drop-cap on its first body paragraph
+          firstBodySeen = false;
+          return (
+            <h2 key={i} className="chapter">
+              {p.c}
+            </h2>
+          );
+        }
         if (p.t === "center") {
           return (
             <p key={i} className="center">
