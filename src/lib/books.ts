@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { del, list, put } from "@vercel/blob";
+import { del, get, list, put } from "@vercel/blob";
 import type { BookContent, BookMeta, Para } from "./types";
 import seedNorwegianWood from "@/content/norwegian-wood.json";
 
@@ -96,18 +96,25 @@ async function diskDeleteCover(id: string): Promise<void> {
 // ---------------------------------------------------------------------------
 // Blob backend (Vercel)
 // ---------------------------------------------------------------------------
+// Vercel Blob stores are private by default, so blobs are read server-side
+// with the read-write token (the public URL can't be fetched directly). Covers
+// are streamed to the browser through the /api/cover/<id> route handler.
 const BOOK_PREFIX = "books/";
-const COVER_PREFIX = "covers/";
+export const COVER_PREFIX = "covers/";
 
 function blobBookKey(id: string): string {
   return `${BOOK_PREFIX}${id}.json`;
 }
 
-/** Fetch a blob's JSON, busting the CDN cache so edits are reflected at once. */
-async function fetchBlobJson<T>(url: string, version: number): Promise<T | null> {
-  const res = await fetch(`${url}?v=${version}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return (await res.json()) as T;
+/** Read a private blob's text by pathname, or null if it doesn't exist. */
+async function readBlobText(pathname: string): Promise<string | null> {
+  try {
+    const res = await get(pathname, { access: "private", useCache: false });
+    if (!res || res.statusCode !== 200) return null;
+    return await new Response(res.stream).text();
+  } catch {
+    return null; // BlobNotFoundError and friends
+  }
 }
 
 /** Seed the store with the bundled book(s) the first time it's empty. */
@@ -118,11 +125,8 @@ async function blobEnsureStore(): Promise<void> {
 }
 
 async function blobReadBook(id: string): Promise<BookContent | null> {
-  const key = blobBookKey(id);
-  const { blobs } = await list({ prefix: key, limit: 1 });
-  const hit = blobs.find((b) => b.pathname === key);
-  if (!hit) return null;
-  return fetchBlobJson<BookContent>(hit.url, hit.uploadedAt.getTime());
+  const text = await readBlobText(blobBookKey(id));
+  return text ? (JSON.parse(text) as BookContent) : null;
 }
 
 async function blobReadAll(): Promise<BookContent[]> {
@@ -130,17 +134,20 @@ async function blobReadAll(): Promise<BookContent[]> {
   const books = await Promise.all(
     blobs
       .filter((b) => b.pathname.endsWith(".json"))
-      .map((b) => fetchBlobJson<BookContent>(b.url, b.uploadedAt.getTime())),
+      .map(async (b) => {
+        const text = await readBlobText(b.pathname);
+        return text ? (JSON.parse(text) as BookContent) : null;
+      }),
   );
   return books.filter((b): b is BookContent => b !== null);
 }
 
 async function blobWriteBook(book: BookContent): Promise<void> {
   await put(blobBookKey(book.id), JSON.stringify(book, null, 2), {
-    access: "public",
+    access: "private",
     contentType: "application/json",
     allowOverwrite: true,
-    // shortest cache the API allows; reads also bust it with ?v=
+    // shortest cache the API allows; reads pass useCache:false anyway
     cacheControlMaxAge: 60,
   });
 }
@@ -160,12 +167,13 @@ async function blobSaveCover(
   contentType: string,
 ): Promise<string> {
   await blobDeleteCover(id);
-  const { url } = await put(`${COVER_PREFIX}${id}.${ext}`, bytes, {
-    access: "public",
+  await put(`${COVER_PREFIX}${id}.${ext}`, bytes, {
+    access: "private",
     contentType,
     allowOverwrite: true,
   });
-  return url;
+  // served through our own route since the blob itself is private
+  return `/api/cover/${id}`;
 }
 
 async function blobDeleteCover(id: string): Promise<void> {
@@ -216,6 +224,26 @@ async function saveCover(id: string, file: File): Promise<string> {
 
 function deleteCover(id: string): Promise<void> {
   return useBlob ? blobDeleteCover(id) : diskDeleteCover(id);
+}
+
+/**
+ * Read a stored cover image for streaming back to the browser. Only used with
+ * the Blob backend (on disk, covers are served statically from /covers).
+ */
+export async function getCover(
+  id: string,
+): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string } | null> {
+  if (!useBlob) return null;
+  const { blobs } = await list({ prefix: `${COVER_PREFIX}${id}.` });
+  const hit = blobs[0];
+  if (!hit) return null;
+  try {
+    const res = await get(hit.pathname, { access: "private" });
+    if (!res || res.statusCode !== 200) return null;
+    return { stream: res.stream, contentType: res.blob.contentType };
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
