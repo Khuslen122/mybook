@@ -201,7 +201,7 @@ export function BookShelf({ books }: { books: BookMeta[] }) {
 
         <Select<Sort>
           value={sort}
-          onValueChange={(value) => setSort(value)}
+          onValueChange={(value) => value && setSort(value)}
           items={SORT_LABELS}
         >
           <SelectTrigger aria-label="Sort books" className="min-w-48">
