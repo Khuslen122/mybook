@@ -30,4 +30,19 @@ export function addBookmarkHere(bookId: string) {
 export function jumpTo(p: number) {
   const h = document.documentElement.scrollHeight - window.innerHeight;
   window.scrollTo({ top: p * h, behavior: "smooth" });
+  // once the smooth scroll settles, briefly flash the paragraph in view
+  window.setTimeout(() => {
+    const el = document
+      .elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)
+      ?.closest("p");
+    if (!el) return;
+    el.classList.remove("bm-flash");
+    void (el as HTMLElement).offsetWidth; // restart the animation if re-triggered
+    el.classList.add("bm-flash");
+    el.addEventListener(
+      "animationend",
+      () => el.classList.remove("bm-flash"),
+      { once: true },
+    );
+  }, 650);
 }

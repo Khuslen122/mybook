@@ -1,27 +1,30 @@
 "use client";
 
-import { Moon, Sun, SunMedium } from "lucide-react";
+import { Cloud, Moon, MoonStar, Sun, SunMedium, Trees } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { useReader } from "@/store/reader";
+import { cycleThemeAnimated } from "@/lib/theme-transition";
 import type { Theme } from "@/lib/types";
 
 const ICON: Record<Theme, typeof Sun> = {
   light: Sun,
   sepia: SunMedium,
+  gray: Cloud,
   dark: Moon,
+  night: MoonStar,
+  forest: Trees,
 };
 
 export function ThemeToggle({ className }: { className?: string }) {
   const theme = useReader((s) => s.settings.theme);
-  const cycleTheme = useReader((s) => s.cycleTheme);
   const Icon = ICON[theme];
 
   return (
     <Button
       variant="outline"
       size="icon"
-      onClick={cycleTheme}
+      onClick={cycleThemeAnimated}
       aria-label={`Theme: ${theme}. Click to change.`}
       title={`Theme: ${theme}`}
       className={`rounded-full ${className ?? ""}`}

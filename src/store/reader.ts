@@ -11,6 +11,8 @@ export type Settings = {
   size: number;
   /** line-height multiplier */
   leading: number;
+  /** space between paragraphs, in em */
+  paraGap: number;
   /** column max-width, a CSS length */
   measure: string;
   align: Align;
@@ -23,6 +25,7 @@ type ReaderState = {
   hydrated: boolean;
 
   setSettings: (patch: Partial<Settings>) => void;
+  resetSettings: () => void;
   cycleTheme: () => void;
   setProgress: (bookId: string, p: number) => void;
   addBookmark: (bookId: string, bm: Bookmark) => void;
@@ -35,11 +38,22 @@ export const DEFAULT_SETTINGS: Settings = {
   font: "serif",
   size: 1.28,
   leading: 1.8,
+  paraGap: 1.35,
   measure: "40rem",
   align: "left",
 };
 
-const THEME_ORDER: Theme[] = ["light", "sepia", "dark"];
+export const THEME_ORDER: Theme[] = [
+  "light",
+  "sepia",
+  "gray",
+  "dark",
+  "night",
+  "forest",
+];
+
+/** Themes that use a dark background (toggles the shadcn `.dark` class). */
+export const DARK_THEMES: Theme[] = ["dark", "night", "forest"];
 
 export const useReader = create<ReaderState>()(
   persist(
@@ -51,6 +65,8 @@ export const useReader = create<ReaderState>()(
 
       setSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ...patch } })),
+
+      resetSettings: () => set({ settings: { ...DEFAULT_SETTINGS } }),
 
       cycleTheme: () => {
         const cur = get().settings.theme;

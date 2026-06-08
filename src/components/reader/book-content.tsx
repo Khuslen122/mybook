@@ -16,16 +16,18 @@ function BookContentInner({ book }: { book: Book }) {
         transition={{ duration: 0.9, ease: "easeOut" }}
         className="mb-16 flex min-h-[78vh] flex-col items-center justify-center text-center"
       >
-        <div className="relative mb-9 aspect-2/3 w-[200px] max-w-[55%] overflow-hidden rounded-md shadow-[0_18px_40px_-12px_rgba(0,0,0,0.4),0_4px_10px_rgba(0,0,0,0.12)]">
-          <Image
-            src={book.cover}
-            alt={`${book.title} cover`}
-            fill
-            priority
-            sizes="200px"
-            className="object-cover"
-          />
-        </div>
+        {book.cover && (
+          <div className="relative mb-9 aspect-2/3 w-[200px] max-w-[55%] overflow-hidden rounded-md shadow-[0_18px_40px_-12px_rgba(0,0,0,0.4),0_4px_10px_rgba(0,0,0,0.12)]">
+            <Image
+              src={book.cover}
+              alt={`${book.title} cover`}
+              fill
+              priority
+              sizes="200px"
+              className="object-cover"
+            />
+          </div>
+        )}
         <p className="mb-3 text-sm font-medium uppercase tracking-[0.22em] text-(--reading-soft)">
           {book.author}
         </p>

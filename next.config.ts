@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    serverActions: {
+      // book files (EPUB/PDF) uploaded through the add-book form can be large
+      bodySizeLimit: "30mb",
+    },
+  },
 };
 
 export default nextConfig;

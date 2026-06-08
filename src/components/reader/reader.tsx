@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import type { BookContent as Book } from "@/lib/types";
 import { useReader } from "@/store/reader";
+import { cycleThemeAnimated } from "@/lib/theme-transition";
 import { BookContent } from "./book-content";
 import { SettingsPanel } from "./settings-panel";
 import {
@@ -42,7 +43,7 @@ export function Reader({ book }: { book: Book }) {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       const step = window.innerHeight * 0.9;
-      const { settings, setSettings, cycleTheme } = useReader.getState();
+      const { settings, setSettings } = useReader.getState();
       switch (e.key) {
         case " ":
         case "PageDown":
@@ -84,7 +85,7 @@ export function Reader({ book }: { book: Book }) {
           break;
         case "t":
         case "T":
-          cycleTheme();
+          cycleThemeAnimated();
           break;
         case "b":
         case "B":
@@ -149,7 +150,12 @@ export function Reader({ book }: { book: Book }) {
             </Button>
           }
         />
-        <PopoverContent align="end" sideOffset={10} className="w-auto">
+        <PopoverContent
+          align="end"
+          sideOffset={10}
+          positionMethod="fixed"
+          className="max-h-[85vh] w-auto overflow-y-auto"
+        >
           <SettingsPanel bookId={book.id} />
         </PopoverContent>
       </Popover>

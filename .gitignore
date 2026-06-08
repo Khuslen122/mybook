@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# user-added book data (created at runtime)
+/data
+# runtime-uploaded covers (keep the bundled seed cover)
+/public/covers/*
+!/public/covers/norwegian-wood.jpg

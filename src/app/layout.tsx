@@ -33,9 +33,10 @@ const themeBootstrap = `(function(){try{
   d.setAttribute('data-theme', st.theme||'light');
   d.setAttribute('data-font', st.font||'serif');
   d.setAttribute('data-align', st.align||'left');
-  d.classList.toggle('dark', st.theme==='dark');
+  d.classList.toggle('dark', ['dark','night','forest'].indexOf(st.theme)>=0);
   if(st.size) d.style.setProperty('--reading-size', st.size+'rem');
   if(st.leading) d.style.setProperty('--reading-leading', String(st.leading));
+  if(st.paraGap) d.style.setProperty('--reading-para-gap', st.paraGap+'em');
   if(st.measure) d.style.setProperty('--reading-measure', st.measure);
 }catch(e){}})();`;
 

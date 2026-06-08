@@ -110,25 +110,40 @@ export function BackToTop() {
 /** Persists reading progress (throttled) and restores scroll on mount. */
 export function ProgressTracker({ bookId }: { bookId: string }) {
   const setProgress = useReader((s) => s.setProgress);
+  // persisted progress loads from localStorage asynchronously; wait for it,
+  // otherwise the saved position reads as 0 and we'd start from the top.
+  const hydrated = useReader((s) => s.hydrated);
 
   useEffect(() => {
-    // restore once the layout has a height to scroll within
+    if (!hydrated) return;
+
     const start = useReader.getState().progress[bookId] ?? 0;
-    if (start > 0.001) {
-      requestAnimationFrame(() => {
+    // hold off persisting until the saved position is restored, so the
+    // initial scrollY (0) doesn't overwrite stored progress.
+    let restored = start <= 0.001;
+
+    if (!restored) {
+      // fonts/images keep shifting the page height for a few frames after
+      // hydration; re-apply the target until the layout settles.
+      let tries = 0;
+      const restore = () => {
         const h = document.documentElement.scrollHeight - window.innerHeight;
-        window.scrollTo(0, start * h);
-      });
+        if (h > 0) window.scrollTo(0, start * h);
+        if (++tries < 6) requestAnimationFrame(restore);
+        else restored = true;
+      };
+      requestAnimationFrame(restore);
     }
 
     let last = 0;
     return onScroll(() => {
+      if (!restored) return;
       const now = Date.now();
       if (now - last < 400) return;
       last = now;
       setProgress(bookId, scrollProgress());
     });
-  }, [bookId, setProgress]);
+  }, [bookId, setProgress, hydrated]);
 
   return null;
 }

@@ -160,6 +160,17 @@
   --reading-shelf: #e6dabc;
 }
 
+[data-theme="gray"] {
+  --reading-bg: #ececed;
+  --reading-elev: #f7f7f8;
+  --reading-fg: #2a2d31;
+  --reading-soft: #686d73;
+  --reading-rule: #d9dbde;
+  --reading-gold: #5f7184;
+  --reading-sel: #d7dce1;
+  --reading-shelf: #dfe1e4;
+}
+
 [data-theme="dark"] {
   --reading-bg: #161513;
   --reading-elev: #1d1c19;
@@ -169,6 +180,28 @@
   --reading-gold: #b9a984;
   --reading-sel: #3a3526;
   --reading-shelf: #201e19;
+}
+
+[data-theme="night"] {
+  --reading-bg: #0f1420;
+  --reading-elev: #161d2c;
+  --reading-fg: #cdd6e4;
+  --reading-soft: #7c8699;
+  --reading-rule: #232c3d;
+  --reading-gold: #8aa6cf;
+  --reading-sel: #2a3346;
+  --reading-shelf: #141a27;
+}
+
+[data-theme="forest"] {
+  --reading-bg: #10160f;
+  --reading-elev: #161d14;
+  --reading-fg: #cfd6c5;
+  --reading-soft: #828b78;
+  --reading-rule: #232c20;
+  --reading-gold: #9bbd7e;
+  --reading-sel: #2a331f;
+  --reading-shelf: #141a12;
 }
 
 /* map reader palette onto shadcn semantic tokens so every
@@ -221,6 +254,30 @@ html {
   }
 }
 
+/* smooth whole-page crossfade when switching themes */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.45s;
+  animation-timing-function: ease;
+}
+
+/* brief highlight when jumping to a bookmark */
+@keyframes bm-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  25% {
+    background-color: var(--reading-sel);
+  }
+}
+.reading p.bm-flash {
+  animation: bm-flash 1.3s ease;
+  border-radius: 6px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 /* ---------- reading prose ---------- */
 
 .reading {
@@ -230,7 +287,7 @@ html {
   color: var(--reading-fg);
 }
 .reading p {
-  margin: 0 0 1.35em;
+  margin: 0 0 var(--reading-para-gap, 1.35em);
   hyphens: auto;
   -webkit-hyphens: auto;
 }

@@ -1,11 +1,19 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Bookmark as BookmarkIcon, Plus, X } from "lucide-react";
+import {
+  Bookmark as BookmarkIcon,
+  Check,
+  ChevronDown,
+  Plus,
+  RotateCcw,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { useReader } from "@/store/reader";
+import { setThemeAnimated } from "@/lib/theme-transition";
 import { addBookmarkHere, jumpTo } from "./use-bookmarks";
 import type { Align, Bookmark, FontFamily, Theme } from "@/lib/types";
 
@@ -53,15 +61,28 @@ function Segmented<T extends string>({
   );
 }
 
-const SWATCH: Record<Theme, string> = {
-  light: "#faf8f3",
-  sepia: "#f4ecd8",
-  dark: "#1d1c19",
-};
+const THEMES: { value: Theme; label: string; swatch: string }[] = [
+  { value: "light", label: "Light", swatch: "#faf8f3" },
+  { value: "sepia", label: "Sepia", swatch: "#f4ecd8" },
+  { value: "gray", label: "Gray", swatch: "#ececed" },
+  { value: "dark", label: "Dark", swatch: "#1d1c19" },
+  { value: "night", label: "Night", swatch: "#161d2c" },
+  { value: "forest", label: "Forest", swatch: "#161d14" },
+];
+
+const SHORTCUTS: { keys: string[]; desc: string }[] = [
+  { keys: ["J", "K"], desc: "Scroll line" },
+  { keys: ["Space"], desc: "Page down" },
+  { keys: ["+", "−"], desc: "Text size" },
+  { keys: ["T"], desc: "Cycle theme" },
+  { keys: ["B"], desc: "Bookmark" },
+  { keys: ["G", "⇧G"], desc: "Top / end" },
+];
 
 export function SettingsPanel({ bookId }: { bookId: string }) {
   const settings = useReader((s) => s.settings);
   const setSettings = useReader((s) => s.setSettings);
+  const resetSettings = useReader((s) => s.resetSettings);
   const bookmarks = useReader((s) => s.bookmarks[bookId] ?? NO_BOOKMARKS);
   const removeBookmark = useReader((s) => s.removeBookmark);
 
@@ -70,22 +91,39 @@ export function SettingsPanel({ bookId }: { bookId: string }) {
   return (
     <div className="w-72 space-y-4">
       <Group label="Theme">
-        <div className="flex gap-2">
-          {(Object.keys(SWATCH) as Theme[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setSettings({ theme: t })}
-              title={t}
-              aria-label={`${t} theme`}
-              style={{ background: SWATCH[t] }}
-              className={cn(
-                "h-8 flex-1 rounded-lg border-2 transition-transform hover:-translate-y-0.5",
-                settings.theme === t
-                  ? "border-(--reading-gold)"
-                  : "border-(--reading-rule)",
-              )}
-            />
-          ))}
+        <div className="grid grid-cols-3 gap-2">
+          {THEMES.map((t) => {
+            const active = settings.theme === t.value;
+            return (
+              <button
+                key={t.value}
+                onClick={() => setThemeAnimated(t.value)}
+                aria-label={`${t.label} theme`}
+                aria-pressed={active}
+                className="flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-0.5"
+              >
+                <span
+                  style={{ background: t.swatch }}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-lg border-2 transition-colors",
+                    active
+                      ? "border-(--reading-gold)"
+                      : "border-(--reading-rule)",
+                  )}
+                >
+                  {active && <Check className="size-4 text-(--reading-gold)" />}
+                </span>
+                <span
+                  className={cn(
+                    "text-[0.7rem] font-medium leading-none transition-colors",
+                    active ? "text-(--reading-gold)" : "text-(--reading-soft)",
+                  )}
+                >
+                  {t.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </Group>
 
@@ -121,6 +159,18 @@ export function SettingsPanel({ bookId }: { bookId: string }) {
             { value: "1.55", label: "Tight" },
             { value: "1.8", label: "Normal" },
             { value: "2.1", label: "Airy" },
+          ]}
+        />
+      </Group>
+
+      <Group label="Paragraph spacing">
+        <Segmented<string>
+          value={String(settings.paraGap)}
+          onChange={(v) => setSettings({ paraGap: parseFloat(v) })}
+          options={[
+            { value: "0.8", label: "Compact" },
+            { value: "1.35", label: "Normal" },
+            { value: "2", label: "Roomy" },
           ]}
         />
       </Group>
@@ -197,6 +247,45 @@ export function SettingsPanel({ bookId }: { bookId: string }) {
           </ul>
         )}
       </div>
+
+      <Separator />
+
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-(--reading-soft) [&::-webkit-details-marker]:hidden">
+          Shortcuts
+          <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" />
+        </summary>
+        <dl className="mt-2.5 space-y-1.5">
+          {SHORTCUTS.map((s) => (
+            <div
+              key={s.desc}
+              className="flex items-center justify-between gap-2"
+            >
+              <dt className="text-[0.74rem] text-(--reading-soft)">{s.desc}</dt>
+              <dd className="flex gap-1">
+                {s.keys.map((k) => (
+                  <kbd
+                    key={k}
+                    className="rounded border border-(--reading-rule) bg-(--reading-bg) px-1.5 py-0.5 font-mono text-[0.66rem] font-medium leading-none text-(--reading-fg)"
+                  >
+                    {k}
+                  </kbd>
+                ))}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+
+      <Separator />
+
+      <button
+        onClick={resetSettings}
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[0.74rem] font-medium text-(--reading-soft) transition-colors hover:text-(--reading-fg)"
+      >
+        <RotateCcw className="size-3.5" />
+        Reset to defaults
+      </button>
     </div>
   );
 }

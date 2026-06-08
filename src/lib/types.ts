@@ -11,6 +11,8 @@ export type BookContent = {
   author: string;
   cover: string;
   year: number;
+  /** full publication date as ISO yyyy-MM-dd, when known */
+  published?: string;
   paragraphs: Para[];
 };
 
@@ -24,7 +26,13 @@ export type BookMeta = {
   words: number;
 };
 
-export type Theme = "light" | "sepia" | "dark";
+export type Theme =
+  | "light"
+  | "sepia"
+  | "gray"
+  | "dark"
+  | "night"
+  | "forest";
 export type FontFamily = "serif" | "sans" | "mono";
 export type Align = "left" | "justify";
 
